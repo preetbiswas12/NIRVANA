@@ -1,0 +1,996 @@
+### FRONTEND ###
+
+
+
+# Frontend (full directory projection and guide)
+
+This document projects every file/folder under `frontend/`, explains what it does, and links to deeper per-area docs you already have.
+
+Quick links
+- App routes: `app/` (Next.js App Router)
+- UI components: `components/`
+- Data calls: `data-access/` (see frontend-data-access-overview.txt)
+- Hooks: `hooks/` (see frontend-hooks-overview.txt)
+- Lib & stores: `lib/`, `store/` (see frontend-lib-overview.txt, frontend-store-overview.txt)
+- Providers: `provider/` (see frontend-provider-overview.txt)
+- Types & utils: `types/`, `utils/` (see frontend-types-overview.txt, frontend-utils-overview.txt)
+- Constants: `constants/` (see frontend-constants-overview.txt)
+
+Top-level files
+- .env.example — sample environment variables for local setup.
+- .gitignore — ignored files for Git.
+- biome.json — Biome formatter/linter config.
+- bun.lock — bun lockfile.
+- components.json — UI config (icons, shadcn/tailwind setup, etc.).
+- global.d.ts — global TS types, if any.
+- middleware.ts — Next middleware (e.g., auth gating, redirects). Runs on edge.
+- next.config.ts — Next.js build/runtime configuration.
+- package.json — frontend dependencies and scripts.
+- postcss.config.mjs — PostCSS/Tailwind pipeline config.
+- README.md — root frontend readme.
+- tsconfig.json — TypeScript compiler options.
+- The following deep-dive docs already exist at repo root of frontend:
+  - frontend-apps-overview.txt, frontend-components-overview.txt, frontend-constants-overview.txt, frontend-data-access-overview.txt, frontend-hooks-overview.txt, frontend-lib-overview.txt, frontend-provider-overview.txt, frontend-store-overview.txt, frontend-types-overview.txt, frontend-utils-overview.txt
+
+------------------------------------------------------------
+
+###  app/ (Next.js routes and layouts)
+
+# Frontend app/ folder overview (super detailed guide)
+
+Think of the `app/` folder as the map of your website/app. Each folder is a route (a URL path), and each `page.tsx` is a screen. `layout.tsx` files are frames/wrappers around groups of screens (think: header/sidebar around all dashboard pages). This structure follows Next.js App Router conventions.
+
+If you want to understand how the backend works behind these screens, open: backend/backend-src.txt
+
+------------------------------------------------------------
+
+## Full directory tree (app/)
+app/
+├─ favicon.ico
+├─ globals.css
+├─ layout.tsx
+├─ page.tsx
+├─ api/
+│  └─ webhooks/
+│     └─ clerk/
+│        └─ route.ts
+├─ dashboard/
+│  ├─ layout.tsx
+│  ├─ page.tsx
+│  ├─ chat/
+│  │  └─ page.tsx
+│  ├─ exercise/
+│  │  ├─ page.tsx
+│  │  ├─ [id]/
+│  │  │  └─ page.tsx
+│  │  └─ new/
+│  │     └─ page.tsx
+│  ├─ journal/
+│  │  ├─ page.tsx
+│  │  ├─ [id]/
+│  │  │  ├─ page.tsx
+│  │  │  └─ edit/
+│  │  │     └─ page.tsx
+│  │  └─ create/
+│  │     └─ page.tsx
+│  └─ self-care/
+│     ├─ page.tsx
+│     ├─ daily-uplift/
+│     │  └─ page.tsx
+│     ├─ mindful-breathing/
+│     │  └─ page.tsx
+│     └─ music-deck/
+│        └─ page.tsx
+├─ onboard/
+│  └─ page.tsx
+├─ sign-in/
+│  └─ [[...sign-in]]/
+│     └─ page.tsx
+└─ sign-up/
+  └─ [[...sign-up]]/
+    └─ page.tsx
+
+------------------------------------------------------------
+
+## App Router quick primer (in simple words)
+- A folder path becomes a URL path.
+  - Example: `app/dashboard/page.tsx` → `/dashboard`
+- A `layout.tsx` applies to every page inside its folder (and subfolders) unless overridden by a deeper layout.
+ A dynamic segment folder like `[id]` lets you show a page for any value: `app/dashboard/journal/[id]/page.tsx` → `/dashboard/journal/123`.
+ A catch-all segment like `[[...sign-in]]` handles multiple nested paths: `app/sign-in/[[...sign-in]]/page.tsx` covers `/sign-in`, `/sign-in/sso`, etc.
+ Route Handlers in `app/api/**/route.ts` are server-only functions that respond to HTTP requests under `/api/*`.
+
+------------------------------------------------------------
+
+## Top-level files in app/
+- `app/favicon.ico`
+  - The tiny icon shown in the browser tab.
+- `app/globals.css`
+  - Global CSS styles applied to the entire app.
+- `app/layout.tsx`
+  - The global frame for all pages. Usually sets up UI providers, themes, fonts, and wrappers used on every route.
+- `app/page.tsx`
+  - Your homepage at `/`.
+
+What this means: every page under `app/` will inherit the global layout unless a nested layout overrides it (e.g., the dashboard has its own layout).
+
+------------------------------------------------------------
+
+## API routes under app/api (server-only)
+- `app/api/webhooks/clerk/route.ts` → `/api/webhooks/clerk`
+  - Purpose: Receive secure webhooks from Clerk (auth provider) for events like user created/updated.
+  - Typical flow: verify the webhook signature → update your database or sync state with the backend → return a small JSON/empty response.
+  - Notes:
+    - This file does not render a page. It runs only on the server (no client-side code here).
+    - Keep secrets on the server; never expose them in client components.
+
+------------------------------------------------------------
+
+## Dashboard routes (app/dashboard)
+
+- `app/dashboard/layout.tsx`
+  - Route scope: applies to all pages under `/dashboard/*`.
+  - Purpose: Provide the dashboard frame (e.g., sidebar, topbar). Keeps dashboard pages consistent and avoids duplication.
+
+- `app/dashboard/page.tsx` → `/dashboard`
+  - The main dashboard landing screen. Usually a summary/overview (stats, quick links to chat/journal/exercises).
+
+### Chat (app/dashboard/chat)
+- `app/dashboard/chat/page.tsx` → `/dashboard/chat`
+  - Likely renders the chat experience: conversation list, message history, input box, and streaming reply UI.
+  - Data flow (typical): calls frontend data-access functions (e.g., `frontend/data-access/chat.ts`) which talk to backend chat endpoints; shows messages using shared chat components.
+  - Common features: auto-scroll to newest message, optimistic UI when sending a message, retry on failure.
+
+### Exercise (app/dashboard/exercise)
+- `app/dashboard/exercise/page.tsx` → `/dashboard/exercise`
+  - A hub/list of micro-exercises (e.g., breathing, stretching, quick mental tasks). Users can explore or continue an exercise.
+- `app/dashboard/exercise/new/page.tsx` → `/dashboard/exercise/new`
+  - A creation/start-new flow. Possibly suggests an exercise based on user profile/mood.
+- `app/dashboard/exercise/[id]/page.tsx` → `/dashboard/exercise/<exerciseId>`
+  - Dynamic details page for one exercise. Shows title, steps, duration, difficulty, and a “start” or “complete” action.
+  - Expected interactions: mark complete, record feedback, or log progress.
+
+### Journal (app/dashboard/journal)
+- `app/dashboard/journal/page.tsx` → `/dashboard/journal`
+  - Journal entry list. Shows recent entries, filters by date/tag/mood, and a button to create a new entry.
+- `app/dashboard/journal/create/page.tsx` → `/dashboard/journal/create`
+  - New entry editor (rich text or markdown). May offer prompts or templates.
+- `app/dashboard/journal/[id]/page.tsx` → `/dashboard/journal/<entryId>`
+  - View a single journal entry with created/updated timestamps; show tags, mood, insights.
+- `app/dashboard/journal/[id]/edit/page.tsx` → `/dashboard/journal/<entryId>/edit`
+  - Edit a journal entry. Usually pre-fills existing content; validates changes before saving.
+
+### Self-care (app/dashboard/self-care)
+- `app/dashboard/self-care/page.tsx` → `/dashboard/self-care`
+  - Self-care hub with quick-access tiles for activities.
+- `app/dashboard/self-care/daily-uplift/page.tsx` → `/dashboard/self-care/daily-uplift`
+  - A daily tip/uplift card: quotes, quick gratitude prompts, or micro-challenges.
+- `app/dashboard/self-care/mindful-breathing/page.tsx` → `/dashboard/self-care/mindful-breathing`
+  - Guided breathing with a timer/animation (inhale/hold/exhale cycles).
+- `app/dashboard/self-care/music-deck/page.tsx` → `/dashboard/self-care/music-deck`
+  - A music playlist/selector for focus, relaxation, or sleep. Likely integrates with audio controls and stored preferences.
+
+Dashboard UX tips:
+- Use the dashboard layout for side navigation and a consistent look.
+- Keep pages small and focused: list pages fetch lists; detail pages fetch one resource.
+- Use React Server Components by default; add "use client" only when interactivity is needed (forms, effects, event handlers).
+
+------------------------------------------------------------
+
+## Onboarding (app/onboard)
+- `app/onboard/page.tsx` → `/onboard`
+  - A welcome/setup page that collects initial info (name, goals, preferences) to personalize the dashboard.
+  - Typical flow: submit → save to backend → redirect to `/dashboard`.
+
+------------------------------------------------------------
+
+## Authentication with Clerk (app/sign-in and app/sign-up)
+- `app/sign-in/[[...sign-in]]/page.tsx` → `/sign-in` (and nested)
+  - Catch-all route used by Clerk’s prebuilt sign-in UI; also supports deeper paths like `/sign-in/sso-callback`.
+- `app/sign-up/[[...sign-up]]/page.tsx` → `/sign-up` (and nested)
+  - Catch-all route for sign-up. Clerk manages the UI and steps (email verification, password, SSO, etc.).
+
+Auth tips:
+- These routes are usually minimal wrappers around Clerk components.
+- After success, redirect users to onboarding or dashboard.
+- Protect dashboard routes via middleware or Clerk helpers to ensure only logged-in users can access them.
+
+------------------------------------------------------------
+
+## Route-to-URL cheat sheet (complete mapping)
+- `/` → `app/page.tsx`
+- `/dashboard` → `app/dashboard/page.tsx`
+- `/dashboard/chat` → `app/dashboard/chat/page.tsx`
+- `/dashboard/exercise` → `app/dashboard/exercise/page.tsx`
+- `/dashboard/exercise/new` → `app/dashboard/exercise/new/page.tsx`
+- `/dashboard/exercise/<exerciseId>` → `app/dashboard/exercise/[id]/page.tsx`
+- `/dashboard/journal` → `app/dashboard/journal/page.tsx`
+- `/dashboard/journal/create` → `app/dashboard/journal/create/page.tsx`
+- `/dashboard/journal/<entryId>` → `app/dashboard/journal/[id]/page.tsx`
+- `/dashboard/journal/<entryId>/edit` → `app/dashboard/journal/[id]/edit/page.tsx`
+- `/dashboard/self-care` → `app/dashboard/self-care/page.tsx`
+- `/dashboard/self-care/daily-uplift` → `app/dashboard/self-care/daily-uplift/page.tsx`
+- `/dashboard/self-care/mindful-breathing` → `app/dashboard/self-care/mindful-breathing/page.tsx`
+- `/dashboard/self-care/music-deck` → `app/dashboard/self-care/mus
+
+------------------------------------------------------------
+
+## Typical data flow (how pages talk to backend)
+1) A page or component triggers a data action (e.g., load journal entries, send chat message).
+2) It calls a helper in `frontend/data-access/*` (e.g., `journal.ts`, `chat.ts`).
+3) The data-access helper sends an HTTP request to the backend (`/api/v1/...`).
+4) The backend controller uses models/services to fetch/update MongoDB and returns JSON.
+5) The frontend receives JSON and renders UI using shared components under `frontend/components/**`.
+
+Key benefits:
+- Pages stay mostly about UI. Data-access centralizes fetch logic and error handling.
+- Shared components keep look-and-feel consistent across pages.
+
+------------------------------------------------------------
+
+## Adding a new page (step-by-step)
+1) Create a folder under `app/` that matches the path you want.
+2) Add `page.tsx` inside it — that file renders the screen.
+3) If that section needs a special wrapper (e.g., a local sidebar), add `layout.tsx` in the same folder.
+4) For dynamic routes, name the folder `[param]` (e.g., `[id]`).
+5) If you need server endpoints under `/api`, create folders under `app/api/...` and add `route.ts` with GET/POST handlers.
+
+------------------------------------------------------------
+
+## Common Next.js App Router tips
+- Server Components are the default — faster and more secure. Use `"use client"` only where interactivity is required.
+- Keep global styles in `globals.css`. For page-specific styles, prefer CSS modules or component-level styles.
+- Co-locate files for clarity: route UI in `app/...`, shared UI in `frontend/components/...`, data helpers in `frontend/data-access/...`.
+- For forms: consider server actions or client-side handlers depending on your needs. Validate on both client and server for best UX.
+
+------------------------------------------------------------
+
+## Quick mental model
+- `app/layout.tsx` — global frame around everything.
+- `app/page.tsx` — homepage.
+- `app/dashboard/**` — the logged-in "working area" with its own frame.
+- `app/onboard/page.tsx` — first-time setup.
+- `app/sign-in/**` and `app/sign-up/**` — auth screens provided by Clerk.
+- `app/api/**` — server-only endpoints (no UI) under `/api/*`.
+
+Want to see how the server makes features work (chat, journal, exercises)? Open: backend/backend-src.txt
+
+
+Notes
+- Use server components by default; mark client components with 'use client'.
+- Wrap layout with `<ClientProvider>` and `<ClerkTokenProvider>`.
+
+------------------------------------------------------------
+
+###    components/ (UI building blocks)
+
+# Frontend components/ overview (super detailed, beginner-friendly)
+
+This folder contains reusable UI building blocks. Think of them as LEGO pieces: pages assemble these pieces to build full screens. Components are grouped by feature (chat, exercise, dashboard, landing) and by generic UI (ui, shared, magicui, data-display, text-editor, action).
+
+Where these are used:
+- Pages under `app/` import components here to render UI.
+- Data fetching generally lives in `frontend/data-access/**` so components can stay focused on displaying data and handling user input.
+
+Tip: Add `"use client"` at the top of components that need interactivity (state, effects, event handlers). Server Components (without it) are best for static or data-only rendering.
+
+----------------------------------------------------------------
+
+## Top-level component files
+- `app-sidebar.tsx`
+  - The main app sidebar used across dashboard sections. Likely renders links to Chat, Journal, Exercise, Self-care, etc.
+- `header.tsx`
+  - Top header/navigation bar. May show current user, notifications, or breadcrumbs.
+- `journal-html-viewer.tsx`
+  - Renders journal content (HTML/Markdown) safely and nicely.
+- `sidebar-elements.tsx`
+  - Building blocks for sidebar items (icons, labels, active state styling).
+
+----------------------------------------------------------------
+
+## components/action
+- `text-to-speech.tsx`
+  - Provides text-to-speech for paragraphs or chat replies. Typical props: `text`, `voice`, `rate`, `pitch`, `onStart`, `onEnd`.
+  - Usage: attach to chat replies or exercise instructions to read aloud.
+
+----------------------------------------------------------------
+
+## components/chat
+- `blank-chat.tsx`
+  - Shown when there are no messages yet; encourages the user to start a chat.
+- `chat-bubble.tsx`
+  - One message bubble (user or assistant). Props often include: `role`, `content`, `time`, `isStreaming`.
+- `chat-input.tsx`
+  - The message input with send button, possibly with attachments or voice input.
+- `chat-message-list.tsx`
+  - Scrollable list of `chat-bubble` components; handles auto-scroll to bottom and grouping by day/sender.
+- `expandable-chat.tsx`
+  - Chat container that can expand/collapse; useful on small screens.
+- `message-loading.tsx`
+  - Placeholder skeleton or typing indicator while the assistant is composing a reply.
+- `messages-sidebar.tsx`
+  - Sidebar showing chat threads/conversations; lets users switch threads or create a new one.
+
+Typical usage: pages under `app/dashboard/chat` import `chat-message-list` and `chat-input` to build the chat UI, and `messages-sidebar` for thread navigation.
+
+----------------------------------------------------------------
+
+## components/dashboard
+- `activity-chart.tsx`
+  - Visualizes activity over time (messages sent, exercises completed). Likely uses `components/ui/chart.tsx`.
+- `current-messages.tsx`
+  - Shows the latest chat state or highlights.
+- `exercises-streak.tsx`
+  - Displays current streak of completed exercises.
+- `journaling-streak.tsx`
+  - Shows consecutive days of journaling.
+- `mood-score-card.tsx`
+  - Presents current mood score or trend.
+
+These appear on `app/dashboard/page.tsx` or other dashboard subpages as widgets.
+
+----------------------------------------------------------------
+
+## components/exercise
+- `core-exercise.tsx`
+  - Core container for an exercise session; orchestrates steps and progress.
+- `emotion-selector.tsx`
+  - Lets user pick an emotion from a set (faces/emojis/colors). Props: `value`, `onChange`.
+- `exercise-report.tsx`
+  - Summary of a completed exercise; shows outcomes and next recommendations.
+- `micro-exercise.tsx`
+  - Displays a single micro-exercise card with title, duration, difficulty, and a start button.
+- `mood-rating.tsx`
+  - Simple mood scale selector; props: `value`, `onChange`.
+- `multiple-choice.tsx`
+  - Multiple-choice question UI; props: `question`, `options`, `onSelect`.
+- `question-answer.tsx`
+  - Q&A input component; props: `question`, `onSubmit`.
+- `session-setup.tsx`
+  - Pre-session setup (duration, goal, focus) before starting an exercise.
+
+These combine to provide a complete exercise flow on pages like `/dashboard/exercise` and `/dashboard/exercise/[id]`.
+
+----------------------------------------------------------------
+
+## components/landing
+- `cta.tsx`
+  - Call-to-action button/section; prompts users to sign up or start now.
+- `feature-card.tsx`
+  - Small card highlighting a feature.
+- `feature.tsx`
+  - Feature section block; groups multiple `feature-card` components.
+- `footer.tsx`
+  - Site footer with links and legal info.
+- `hero.tsx`
+  - Hero section with headline and big artwork.
+- `journey.tsx`
+  - Timeline or steps showing the product journey/benefits.
+- `navbar.tsx`
+  - Top navigation bar for the landing/site pages.
+
+Used by the homepage and marketing pages.
+
+----------------------------------------------------------------
+
+## components/shared
+- `fade-img.tsx`
+  - Image with fade-in/fade-out effects; props: `src`, `alt`, `className`, `duration`.
+- `loading-view.tsx`
+  - Full-screen or section-level loading placeholder/spinner.
+- `toaster.tsx`
+  - Host for toast notifications (pairs with `components/ui/toast.tsx`).
+- `wrapper.tsx`
+  - Layout helper for consistent section padding/margins.
+
+Shared helpers used across multiple features.
+
+----------------------------------------------------------------
+
+## components/ui
+- Atoms and molecules for building UIs. Meant to be generic and reusable everywhere.
+- Notable pieces:
+  - `avatar.tsx` — user avatar thumbnail.
+  - `badge.tsx` — labels indicating status/level.
+  - `blur-fade.tsx` — blur+fade transition wrapper.
+  - `button.tsx` — primary/secondary buttons.
+  - `card.tsx` — boxed container for content.
+  - `chart.tsx` — chart wrapper (likely Recharts/Chart.js integration).
+  - `collapsible.tsx` — toggleable content.
+  - `draggable-card.tsx` — card with drag-and-drop.
+  - `drawer.tsx` — slide-in panel.
+  - `dropdown-menu.tsx` — menus with items and separators.
+  - `infinite-music.tsx` — looping/infinite scroll audio list.
+  - `input.tsx`, `textarea.tsx` — form inputs.
+  - `mockup.tsx` — device/browser mockup frames for previews.
+  - `progress.tsx` — progress bar.
+  - `select.tsx` — dropdown/select input.
+  - `separator.tsx` — visual divider.
+  - `sheet.tsx` — sheet dialog component.
+  - `sidebar.tsx` — sidebar container.
+  - `skeleton.tsx` — loading skeletons.
+  - `smooth-cursor.tsx` — cursor trail/follow effect.
+  - `stacking-cards.tsx` — card stack with animations.
+  - `stepper.tsx` — multi-step indicator.
+  - `tabs.tsx` — tabbed navigation.
+  - `toast.tsx` — toast message primitives.
+  - `toggle.tsx` — on/off switch.
+  - `tooltip.tsx` — hover/focus tooltips.
+
+Patterns:
+- Keep UI components stateless where possible; pass data/handlers via props.
+- Share consistent styles, sizes, and names across the UI folder.
+
+----------------------------------------------------------------
+
+## components/magicui
+- Fancy/animated UI flourishes to delight users:
+  - `confetti.tsx` — celebratory confetti (on success or milestones).
+  - `hero-video-dialog.tsx` — dialog showing a video in hero section.
+  - `line-shadow-text.tsx` — styled text with line/shadow effects.
+  - `scratch-to-reveal.tsx` — scratch card effect for reveals.
+
+Use sparingly to avoid performance issues; great for landing pages and celebratory moments.
+
+----------------------------------------------------------------
+
+## components/data-display
+- Visualization and interactive display blocks:
+  - `feedback-modal.tsx` — modal for user feedback.
+  - `mcq-donut-chart.tsx` — donut chart summarizing quiz results.
+  - `mood-chart.tsx` — tracks mood trends over time.
+  - `music-playground.tsx` — playful audio UI for picks/loops.
+  - `report.tsx` — summary reports (journal/exercise/chat insights).
+  - `scroll-down-text.tsx` — animated text prompting scroll.
+
+Often paired with metrics from the dashboard or analysis responses from the backend.
+
+----------------------------------------------------------------
+
+## components/text-editor
+- `index.tsx`
+  - The editor wrapper entry point; exports text editor components/hooks.
+- `menu-bar.tsx`
+  - Toolbar for formatting (bold/italic/headings/lists/code). Likely used with a rich-text editor like TipTap or Slate.
+
+Used on journal create/edit pages and anywhere rich text is needed.
+
+----------------------------------------------------------------
+
+## How to use components well (guidelines)
+1) Keep components focused and small. One job per component.
+2) Lift data fetching out to `frontend/data-access` or parent Server Components; pass data/handlers in.
+3) Make components accessible (labels, roles, keyboard navigation).
+4) Prefer composition over deep props: wrap primitives (from `ui/`) to form feature components.
+5) For interactive pieces, add `"use client"` at top and keep state local.
+6) Write minimal prop docs (TS types + brief comments) for every exported component.
+
+----------------------------------------------------------------
+
+## Adding a new component (step-by-step)
+1) Choose a folder: generic `ui/` or feature-specific (e.g., `chat/`).
+2) Create `my-component.tsx`; export a typed React component.
+3) If interactive, add `"use client"` and define props with clear types.
+4) Add a small usage example in a comment.
+5) Import and use it in a page under `app/`.
+
+With these building blocks, you can rapidly compose pages under `app/` that feel consistent and polished.
+
+
+------------------------------------------------------------
+
+###    constants/
+
+
+# Frontend constants/ overview (beginner-friendly)
+
+Purpose: Keep app-wide constant values in one place so you don’t repeat strings everywhere.
+
+File list
+- `constants/index.ts`
+  - Exports:
+    - `APP_NAME = "Nirvana-Ai"`
+    - `APP_DESCRIPTION = "Niravana AI is a revolutionary app ..."`
+    - `LOCAL_STORAGE_KEY = "nirvana-ai-token"`
+    - `CLERK_TEMPLATE_NAME = "nirwana-ai-token-template"`
+
+Typical usage
+- Display the app name or description in headers/footers.
+- Use `LOCAL_STORAGE_KEY` to store/retrieve the auth token consistently.
+- Use `CLERK_TEMPLATE_NAME` when interacting with Clerk templates/hooks.
+
+Examples
+- Show the app name:
+  - `import { APP_NAME } from '@/constants';`
+  - `<title>{APP_NAME}</title>`
+- Save token to localStorage:
+  - `localStorage.setItem(LOCAL_STORAGE_KEY, token)`
+- Use in a Clerk email template binding:
+  - `const templateName = CLERK_TEMPLATE_NAME;`
+
+Notes
+- Keep constants short, descriptive, and typed as `const` for better autocompletion.
+- Add new constants here instead of scattering magic strings across the app.
+
+
+------------------------------------------------------------
+
+###    data-access/
+# Frontend data-access/ overview (super detailed, beginner-friendly)
+
+Purpose: Central place for API calls. Pages/components import these helpers to talk to the backend. This keeps UI clean and reusable.
+
+Environment required
+- `process.env.NEXT_PUBLIC_HOST_URL` — base URL of your backend (e.g., `http://localhost:3001/api/v1`).
+- These helpers often include credentials (cookies) and attach auth tokens via an interceptor.
+
+Shared pieces
+- `token-interceptor.ts`
+  - Reads token from `accessTokenStorage` (in `frontend/utils/token-storage.ts`).
+  - Adds `Authorization: Bearer <token>` to axios requests when a token exists.
+- `response.ts`
+  - TypeScript types for responses and domain objects:
+    - `Response<T>` standardizes `{ data, message, status }`.
+    - Entities: `Chatbot`, `Chat`, `Journal`, `MicroExercise`, `MicroExerciseReport`, `GeneratedExercisesQuestion`, `WellnessCard`, `Feedback`.
+
+------------------------------------------------------------
+
+## chat.ts
+- Client: `chatApi = axios.create({ baseURL: `${HOST}/chat` })` with token interceptor.
+- `getChatsByChatbotId(chatbotId: string | null)` → Promise<Chat>
+  - GET `/{chatbotId}` with credentials.
+  - Returns chat thread for the given chatbot.
+- `chatWithChatbot({ prompt, chatbotId })` → Promise<Response>
+  - Uses `fetch` (not axios) to POST to `${HOST}/chat/${chatbotId}` with JSON body and explicit `Authorization` header from `accessTokenStorage`.
+  - Returns the raw Response (streaming compatible). Caller should check `response.ok` and parse as needed.
+
+## chatbot.ts
+- Client: `chatbotApi = axios.create({ baseURL: `${HOST}/chatbots` })` with token interceptor.
+- `getChatbots()` → Promise<Chatbot[]>
+  - GET `/` with credentials.
+  - Returns available chatbots (id/name/slug/image/system prompt).
+
+## dashboard.ts
+- Clients for journals, micro-exercises, chat, and chatbots (all with token interceptors):
+  - `journalApi` → `${HOST}/journals`
+  - `microExerciseApi` → `${HOST}/micro-exercises`
+  - `chatApi` → `${HOST}/chat`
+  - `chatbotApi` → `${HOST}/chatbots`
+- `getDashboardData()` → Promise<{ journals: Journal[]; microExercises: MicroExercise[]; chats: Chat[] }>
+  - Fetches journals and exercises.
+  - Fetches chatbots; if any exist, fetches chats for the first chatbot id.
+  - Returns empty arrays on error and logs to console.
+
+## journal.ts
+- Client: `journalApi = axios.create({ baseURL: `${HOST}/journals` })` with token interceptor.
+- `createJournal({ title, content })` → Promise<Journal>
+  - POST `/` → create an entry.
+- `getJournal()` → Promise<Journal[]>
+  - GET `/` → list entries.
+- `getJournalById({ id })` → Promise<Journal>
+  - GET `/{id}` → get one entry.
+- `updateJournal({ id, title, content })` → Promise<Journal>
+  - PUT `/{id}` → update an entry.
+
+## micro-exercises.ts
+- Client: `microExerciseApi = axios.create({ baseURL: `${HOST}/micro-exercises` })` with token interceptor.
+- `getMicroServices()` → Promise<MicroExercise[]>
+  - GET `/` → list all micro-exercises.
+- `getMicroExerciseReportById(id)` → Promise<MicroExerciseReport>
+  - GET `/report/{id}`.
+- `generateMicroExercise({ sessionGoal, primaryEmotion, mentalHealthRate })` → Promise<GeneratedExercisesQuestion>
+  - POST `/generate`.
+- `submitMicroExercise(body)` → Promise<MicroExercise>
+  - POST `/` with full session payload (check-in, QnA, MCQ, reflection).
+- `getFeedback({ userContext })` → Promise<Feedback>
+  - POST `/feedback` with context.
+- `getMicroExerciseReportByExerciseId(exerciseId)` → Promise<MicroExerciseReport>
+  - GET `/report/{exerciseId}`.
+- `getMicroExerciseById(id)` → Promise<MicroExercise>
+  - GET `/{id}`.
+
+## user.ts
+- Client: `userApi = axios.create({ baseURL: `${HOST}/users` })` with token interceptor.
+- `updateUser({ userId, age, weight, gender, symptom })`
+  - PUT `/{userId}` with body. Returns `data.data`.
+
+## wellness-card.ts
+- Client: `wellnessApi = axios.create({ baseURL: HOST })`.
+- `getWellnessCard()` → Promise<WellnessCard[]>
+  - POST `/wellness-cards/generate`.
+
+------------------------------------------------------------
+
+## Usage patterns
+- Import and call from pages/components:
+  - `import { getJournal, createJournal } from '@/data-access/journal';`
+- Prefer try/catch in pages; show toasts on errors using `components/shared/toaster`.
+- For streaming chat responses, use `chatWithChatbot` and read the stream on the client.
+
+## Error handling
+- axios calls throw on non-2xx; wrap in try/catch.
+- `dashboard.getDashboardData` returns empty arrays on failure and logs the error (safe for dashboards to render).
+- For `chatWithChatbot`, check `response.ok` and handle gracefully if false.
+
+## Auth & tokens
+- Token is stored/retrieved with `accessTokenStorage` and attached via `token-interceptor`.
+- Some requests pass `withCredentials: true` to include cookies when needed.
+
+## Extend this folder
+- Create a new file for each domain (e.g., `notifications.ts`).
+- Create an axios client with `baseURL: ${HOST}/your-path` and `interceptors.request.use(tokenInterceptors)`.
+- Export typed helpers that return parsed `data.data`.
+
+
+------------------------------------------------------------
+
+ ###    hooks/
+ 
+# Frontend hooks/ overview (projected inventory)
+
+Purpose: Reusable React hooks for fetching/mutating data, UI behaviors, and notifications. Built on TanStack Query and small utilities.
+
+Shared behavior
+- Query caching comes from `ClientProvider` (staleTime ~60s, no refetch on window focus).
+- Most server calls live in `frontend/data-access/*`; hooks wrap those functions.
+
+------------------------------------------------------------
+
+## mutation.ts (write operations)
+Exports TanStack `useMutation` wrappers. Typical usage:
+- const { mutate, isPending } = useCreateJournal(); mutate({ title, content })
+
+Hooks:
+- useChat()
+  - mutationKey: ['chat']
+  - mutationFn: `chatWithChatbot({ prompt, chatbotId })`
+  - Notes: returns a native Response (stream-capable); check `ok`/read body.
+- useCreateJournal()
+  - mutationKey: ['createJournal']
+  - mutationFn: `createJournal({ title, content })`
+- useUpdateJournal()
+  - mutationKey: ['updateJournal']
+  - mutationFn: `updateJournal({ id, title, content })`
+- useGenerateMicroExercise()
+  - mutationKey: ['generateMicroExercise']
+  - mutationFn: `generateMicroExercise({ sessionGoal, primaryEmotion, mentalHealthRate })`
+- useSubmitMicroExercise()
+  - mutationKey: ['submitMicroExercise']
+  - mutationFn: `submitMicroExercise({...sessionPayload})`
+- useUpdateUser()
+  - mutationKey: ['user-update']
+  - mutationFn: `updateUser({ userId, age, weight, gender, symptom })`
+- useGetWellnessCard()
+  - mutationKey: ['getWellnessCard']
+  - mutationFn: `getWellnessCard()`
+- useGetFeedback()
+  - mutationKey: ['getFeedback']
+  - mutationFn: `getFeedback({ userContext })`
+
+Tips
+- Use `onSuccess`/`onError` to show toasts; `getErrorMessage(error)` in `lib/utils` helps.
+- Invalidate related queries via `queryClient.invalidateQueries` after successful mutations.
+
+------------------------------------------------------------
+
+## query.ts (read operations)
+Exports TanStack `useQuery` wrappers. Typical usage:
+- const { data, isLoading } = useGetJournal()
+
+Hooks:
+- useGetChatbots()
+  - queryKey: ['chatbot']
+  - queryFn: `getChatbots()`
+- useGetChatsByChatbotId(chatbotId)
+  - queryKey: ['chats', chatbotId]
+  - queryFn: `getChatsByChatbotId(chatbotId)`
+  - enabled: only runs when `chatbotId` is truthy.
+- useGetJournal()
+  - queryKey: ['getJournal']
+  - queryFn: `getJournal()`
+- useGetJournalById(id)
+  - queryKey: ['getJournalById', id]
+  - queryFn: `getJournalById({ id })`
+- useGetMicroServices()
+  - queryKey: ['getMicroServices']
+  - queryFn: `getMicroServices()`
+- useGetMicroExerciseById(id)
+  - queryKey: ['getMicroExerciseById', id]
+  - queryFn: `getMicroExerciseById(id)`
+- useGetMicroExerciseReportById(id)
+  - queryKey: ['getMicroExerciseReportById', id]
+  - queryFn: `getMicroExerciseReportById(id)`
+- useGetDashboardData()
+  - queryKey: ['getDashboardData']
+  - queryFn: `getDashboardData()` (aggregates multiple endpoints with safe fallbacks)
+
+Tips
+- Cache keys matter; keep them stable. Leverage `staleTime` from `ClientProvider`.
+- Use `select` to derive view models when needed.
+
+------------------------------------------------------------
+
+## use-auto-scroll.tsx (smart scroll helper)
+- useAutoScroll({ offset = 20, smooth = false, content }) returns:
+  - scrollRef: attach to scrollable container div
+  - isAtBottom: boolean
+  - autoScrollEnabled: boolean
+  - scrollToBottom(): scrolls to latest content
+  - disableAutoScroll(): disables when user scrolls up
+- Internals: listens to scroll/resize, tracks content height, auto scrolls if enabled.
+- Use-case: chat message list, logs, timelines.
+
+------------------------------------------------------------
+
+## use-mobile.ts (media query helper)
+- useIsMobile() → boolean
+- Uses `window.matchMedia('(max-width: 767px)')` to track viewport.
+- SSR note: returns `false` until mounted (state initialized after effect).
+
+------------------------------------------------------------
+
+## use-toast.tsx (global toast store)
+- Exposes minimal toast system with a single visible toast (TOAST_LIMIT=1).
+- Exports:
+  - reducer(state, action)
+  - useToast() → { toasts, toast, dismiss }
+  - toast(opts) → { id, update, dismiss }
+- Usage:
+  - const { toast } = useToast();
+  - toast({ title: 'Saved', description: 'Your journal was saved.' })
+- Notes: Automatically removes toasts after long delay; call `dismiss(id?)` to close.
+
+
+------------------------------------------------------------
+
+###      lib/
+
+# Frontend lib/ overview (projected inventory)
+
+Purpose: Shared utilities, client-side stores, demo data, and static config used across the app.
+
+------------------------------------------------------------
+
+## demo-journal-data.ts (journal analytics helpers)
+Exports functions to transform `Journal[]` into charts/tables:
+- getActivityData(journalEntries: Journal[]): ActivityDay[]
+  - Six-month activity heatmap: for each day, count entries and set level (0/1).
+- getCurrentStreak(journalEntries: Journal[]): number
+  - Counts consecutive days up to today with at least one entry.
+- getEntriesByMonth(journalEntries: Journal[]): MonthData[]
+  - Last six months, number of entries per month.
+- getAverageLengthByMonth(journalEntries: Journal[]): WordCountData[]
+  - For current year, sums word counts per month (uses stripHtml to count words).
+- getEntriesWithWordCount(journalEntries: Journal[]): JournalEntryWithWordCount[]
+  - Adds `wordCount` to each entry.
+- chartConfig: labels/colors for charts.
+
+Notes
+- Uses `date-fns` helpers and `stripHtml` from `utils.ts`.
+
+------------------------------------------------------------
+
+## onboarding-store.ts (Zustand store for onboarding)
+Exports `useOnboardingStore` with shape:
+- State: { age: string; weight: string; gender: 'male'|'female'|'other'|''; healthSymptoms: string[] }
+- Actions: setAge, setWeight, setGender, setHealthSymptoms, reset()
+
+Usage
+- const { age, setAge } = useOnboardingStore()
+- Persist or sync to API using `user.updateUser` mutation after onboarding.
+
+------------------------------------------------------------
+
+## sidebar-data.tsx (navigation items)
+- `sidebarData`: array of routes for the app sidebar with lucide-react icons.
+- Structure: { title, url, icon, children?[] }
+- Sections: Home, Journal (with children: Your Journals, Create New), Micro Exercises, Self Care Lab, Chat.
+
+Usage
+- Drives `app-sidebar` or similar components to render navigation.
+
+------------------------------------------------------------
+
+## utils.ts (UI and HTML utilities)
+Exports:
+- cn(...classNames): tailwind-merge + clsx utility.
+- sanitizeHtml(html, options?): DOMPurify-based sanitizer in browser contexts.
+- renderHTML(html): returns `{ __html }` object (deprecated in favor of parseHTML).
+- parseHTML(html): sanitizes then parses to React elements via html-react-parser.
+- stripHtml(html): removes tags, used for word counts.
+- getErrorMessage(error): extracts server error message from Axios errors with fallback.
+
+Notes
+- DOMPurify is dynamically imported only in the browser to avoid SSR issues.
+
+
+------------------------------------------------------------
+
+###   provider/
+
+# Frontend provider/ overview (projected inventory)
+
+Purpose: App-level React providers to configure client behaviors (React Query and auth token).
+
+------------------------------------------------------------
+
+## client-provider.tsx (React Query setup)
+Exports `<ClientProvider>` component that wraps children with `QueryClientProvider`.
+- Initializes `QueryClient` with defaults:
+  - queries: { staleTime: 60_000, refetchOnWindowFocus: false }
+- Includes `<ReactQueryDevtools>` (button bottom-left, closed by default).
+
+Usage
+- In `app/layout.tsx` wrap the UI tree:
+  - <ClientProvider>{children}</ClientProvider>
+
+------------------------------------------------------------
+
+## token-provider.tsx (Clerk access token bridge)
+Exports `<ClerkTokenProvider>` component.
+- On mount and when Clerk sign-in state changes, fetches a token:
+  - `window.Clerk.session.getToken({ template: templateName })`
+  - Stores it to `accessTokenStorage` (`utils/token-storage.ts`), enabling API auth.
+- Props: { children, templateName }
+
+Usage
+- Place near the root so tokens are set before data fetching:
+  - <ClerkTokenProvider templateName={CLERK_TEMPLATE_NAME}>{children}</ClerkTokenProvider>
+- Ensure `CLERK_TEMPLATE_NAME` is exported from `frontend/constants` and matches your Clerk JWT template.
+
+
+------------------------------------------------------------
+
+###  public/
+- SVGs and images (logo, icons). Also nested folders: assets/, features-icons/, music/
+- Served from /; reference with `/logo.svg`, etc.
+
+------------------------------------------------------------
+
+###   store/
+
+# Frontend store/ overview (projected inventory)
+
+Purpose: Lightweight client-side state using Zustand for app, chat, micro-exercise, wellness cards, and future user state.
+
+------------------------------------------------------------
+
+## app.ts
+- Default export: `useAppStore` (Zustand)
+- State: { chatbotId: string }
+- Actions: setChatbotId(value: string)
+- Use-case: track selected chatbot across dashboard/chat pages.
+
+Usage
+- const { chatbotId, setChatbotId } = useAppStore()
+
+------------------------------------------------------------
+
+## chat.ts
+- Default export: `useChatStore` (Zustand)
+- Types: `Message` { sender: 'user'|'model'; message: string }
+- State:
+  - chat: Message[]
+  - loading: boolean
+  - streamText: string (buffer for streaming responses)
+- Actions:
+  - setChat(message)
+  - resetChat()
+  - setLoading(value)
+  - setStreamText(text) — appends to buffer
+  - resetStream()
+- Use-case: local chat UI state with streaming updates.
+
+------------------------------------------------------------
+
+## micro-exercise.ts
+- Default export: `useMicroExerciseStore`
+- State: { generatedQuestion: GeneratedExercisesQuestion | null }
+- Actions: setGeneratedQuestion(question)
+- Use-case: hold generated exercise questions before submission.
+
+------------------------------------------------------------
+
+## user.ts
+- File exists but is empty (reserved for future user-specific client state).
+
+------------------------------------------------------------
+
+## wellness-card.ts
+- Named export: `useWellnessCardStore` (Zustand + persist)
+- State:
+  - wellnessCard: WellnessCard[]
+  - isLoading: boolean
+- Actions:
+  - setWellnessCard(cards)
+  - setIsLoading(isLoading)
+- Persistence: persisted to localStorage under key `wellness-card`.
+- Use-case: keep generated wellness cards and loading status across sessions.
+
+------------------------------------------------------------
+
+###   types/
+
+# Frontend types/ overview (projected inventory)
+
+Purpose: Shared TypeScript interfaces for UI, charts, micro-exercises, and sidebar.
+
+File: `types/index.ts`
+- SidebarItem
+  - { title: string; url: string; icon: LucideIcon; children?: SidebarItem[] }
+- Topic
+  - { id: string; title: string; icon: string; count?: number }
+- ChatMessage
+  - { id: string; content: string; sender: 'user' | 'model'; avatar?: string }
+- TopicChat
+  - { id: string; messages: ChatMessage[] }
+- ActivityDay
+  - { date: string; count: number; level: 0 | 1 }
+- MonthData
+  - { month: string; year: string; entries: number }
+- AverageLengthData
+  - { month: string; year: string; average: number }
+- WordCountData
+  - { month: string; year: string; totalWords: number }
+- JournalEntryWithWordCount extends `Journal`
+  - adds: wordCount: number
+- QnA
+  - { question: string; answer: string }
+- MCQ
+  - { question: string; options: string[]; answers: string[] }
+- QuickCheckIn
+  - { mood_rating: number; primary_emotion: string }
+- UserReflection
+  - { mood_rating_after: number; reflection: string }
+- ExerciseContent
+  - { qna: QnA[]; mcq: MCQ[] }
+- AIReport
+  - { review: string; feedback: string }
+- MicroExercise
+  - { id, userClerkId, session_goal, quick_check_in, exercise_content, user_reflection, ai_generated_report, createdAt, updatedAt }
+- ExerciseSummary
+  - { totalExercises, completedThisWeek, averageMoodImprovement, streak }
+- ActivityData
+  - { date, journal, exercise, message }
+- MoodScore
+  - { score, label, color }
+- RecentMessage
+  - { id, content, sender: 'user'|'assistant', avatar, time }
+
+Notes
+- `Journal` is imported from `data-access/response`.
+- These types support charts, dashboard, and micro-exercise flows.
+
+
+------------------------------------------------------------
+
+###  utils/
+
+# Frontend utils/ overview (projected inventory)
+
+Purpose: Browser-friendly helpers for storing the API access token.
+
+File: `utils/token-storage.ts`
+- Class: `TokenStorage`
+  - ctor(key: string) → sets `storageKey`
+  - set(token: string) → stores token in `localStorage` (no-op on server)
+  - get(): string | null → reads token from `localStorage` (null on server)
+  - delete() → removes token from `localStorage`
+- Export: `accessTokenStorage = new TokenStorage(LOCAL_STORAGE_KEY)`
+  - Uses `LOCAL_STORAGE_KEY` from `frontend/constants`.
+
+Usage
+- Providers: `ClerkTokenProvider` writes token on sign-in.
+- API: Axios interceptor reads token to set `Authorization: Bearer <token>`.
+
+SSR note
+- All methods guard against non-browser environments by checking `typeof window !== 'undefined'`.
+
+
+------------------------------------------------------------
+
+How things fit together
+- App pages use components and hooks.
+- Hooks call `data-access` which attaches tokens via `token-interceptor` reading from `utils/token-storage`.
+- Providers at the root configure React Query and fetch/store the Clerk token (`CLERK_TEMPLATE_NAME` from constants).
+- Local UI state lives in `store/`; longer-lived or computed data comes from queries.

@@ -1,0 +1,138 @@
+NIRVANA.AI — Judge Briefing Deck (Text Version)
+
+Executive one‑liner
+NIRVANA.AI is a personal mental-wellbeing copilot that blends AI‑guided conversations, micro‑exercises, journaling, and daily self‑care into a single, privacy‑first experience.
+
+What it does (features you can try today)
+- Secure onboarding and access
+  - Authentication via Clerk with protected dashboard routes and middleware guards.
+- AI chat for mental wellness
+  - A supportive chatbot powered by LLMs (Groq) with conversation history.
+- Journaling, built-in
+  - Create, view, edit journal entries with rich text, safe HTML viewing, and streaks.
+- Micro‑exercise engine
+  - Generate short, goal‑oriented wellness exercises (check‑in → Q&A/MCQ → reflection) and submit for personalized reports.
+- Self‑care hub
+  - Daily Uplift (bite-size positivity), Mindful Breathing (guided cycles), and Music Deck (mood playlists).
+- Wellness Card
+  - A snapshot of current wellness signals for quick insight.
+- Insightful dashboard
+  - Current messages, journaling streak, exercise streak, activity chart — designed for small, focused widgets.
+- File and voice friendly groundwork
+  - Upload pathway via multer (e.g., for future audio transcription scenarios).
+
+Minimum Viable Product (MVP) scope
+- App shell and routing
+  - Next.js App Router with global and dashboard layouts; responsive sidebar and header.
+- Core domains
+  - Chat: send a prompt and receive an LLM response (per‑chatbot threads).
+  - Journal: CRUD entries; list and detail views.
+  - Micro‑exercises: generate session, run steps, submit, and view a report.
+  - Self‑care pages: daily uplift, mindful breathing, music deck.
+- Data flow and persistence
+  - Backend REST API v1 on Express + Mongoose (MongoDB) with Joi validation.
+  - Token‑intercepted axios clients on the frontend with a consistent HOST base URL.
+- Auth & access control
+  - Clerk front‑door, JWT middleware for backend protection, error handling, and clean JSON responses.
+
+Why it’s unique in the current landscape
+- All‑in‑one, habit‑forming design
+  - Chat, journaling, micro‑exercises, and self‑care live in one coherent flow — not scattered apps.
+- Micro‑exercise generation engine
+  - Exercises adapt to a session goal, emotions, and self‑reported state; results feed a personal report.
+- Judicious AI
+  - LLM prompts are grounded by domain templates; validation and error middleware keep responses safe and structured.
+- Privacy‑first architecture
+  - Tokenized APIs, explicit auth boundaries, and server components where possible reduce client‑side exposure.
+- Built for extensibility
+  - Versioned APIs, constants‑driven schemas, modular routes/controllers, and typed data across the stack.
+
+Real-world problems it solves
+- Activation barrier: “I don’t know where to start”
+  - Daily Uplift and guided breathing provide immediate, low‑effort engagement.
+- Consistency gap: “I can’t keep a habit”
+  - Micro‑exercises, streaks, and short loops build momentum in minutes, not hours.
+- Reflection deficit: “I can’t make sense of how I feel”
+  - Journaling + a wellness card encourages structured self‑reflection and trend awareness.
+- Access inequality: “Therapy isn’t always accessible”
+  - An AI companion offers timely, stigma‑free support between sessions.
+
+How it works (architecture at a glance)
+- Frontend (Next.js 14+, TypeScript)
+  - App Router, server components by default; client components for interactivity.
+  - Feature‑scoped components (chat, exercise, dashboard) + generic UI library.
+  - Data‑access helpers (axios clients with token interceptor) to keep pages clean.
+- Backend (Express, TypeScript)
+  - /api/v1 with modular routes, controllers, models (Mongoose).
+  - Validation via Joi; auth via JWT middleware; error middleware for consistent JSON.
+  - LLM integration via Groq SDK with prompt templates and model constants.
+  - Multer for uploads (extensible to audio → text transcription).
+- Data
+  - MongoDB for users, chats, journals, exercises, reports, and wellness snapshots.
+
+Key user journeys (judge demo checklist)
+1) New user → sign up/sign in → onboard → dashboard widgets appear.
+2) Start a chat → get a supportive AI reply → see thread in chat view.
+3) Create a journal entry → view it rendered safely → observe journaling streak.
+4) Generate a micro‑exercise → answer steps → submit → view personalized report.
+5) Visit self‑care → try mindful breathing cycles → check Daily Uplift.
+
+Quality and safety guardrails
+- Input validation: All critical endpoints use Joi schemas to reject malformed payloads.
+- Central error handling: Standardized JSON error shapes prevent leaky stack traces.
+- Authorization middleware: Protects private resources and injects user identity.
+- Server components by default: Minimize client‑side data surface.
+
+What success looks like (measurable KPIs)
+- Day‑7 retention of new users.
+- Weekly active journaling users and average entries per week.
+- Exercise completion rate and average session duration.
+- Chat helpfulness rating (thumbs up/down or short CSAT after replies).
+- Streak growth (journal/exercise) over rolling 30 days.
+
+Deployment/readiness notes
+- Clearly separated frontend and backend packages; environment‑driven HOST URL.
+- Bun‑friendly dev scripts on backend, Node/ts‑node compatibility retained.
+- Biome for formatting; strict TypeScript for reliability.
+
+Roadmap — near term (4–8 weeks)
+- Personalization
+  - Adaptive prompts based on recent journals; nudge engine for streak recovery.
+- Rich analysis
+  - Journal sentiment/tag extraction and private trends on the dashboard.
+- Safer, smarter chat
+  - Guardrails and citations for psycho‑education content; crisis‑support fallbacks.
+- Mobile readiness
+  - PWA installability, offline journaling, background sync.
+- Accessibility & inclusivity
+  - WCAG‑aligned UI patterns; multi‑lingual prompts and UI.
+
+Roadmap — medium term (1–2 quarters)
+- Care team bridge (with consent)
+  - Export reports or share weekly summaries with clinicians/coaches.
+- Exercise marketplace
+  - Curated packs (sleep, stress, focus) with A/B tested outcomes.
+- Voice in, voice out
+  - First‑class audio journaling and TTS for exercises and chat replies.
+- Insights and goals
+  - Monthly wellness reviews, micro‑goals, and smart reminders.
+
+Why we will win SIH
+- Strong engineering foundations: versioned APIs, typed models, clean separation of concerns, and a modern Next.js front.
+- Practical, human‑centric feature set that delivers immediate value in minutes per day.
+- Clear safety posture with validation, auth, and error boundaries.
+- A credible path to impact: measurable habits (journal/exercise), incremental insights, and extensible AI.
+
+Judges: what to look for in our demo
+- Speed from sign‑in to value (onboarding → useful action in < 60 seconds).
+- Clarity and consistency in UI (server components + modular design).
+- End‑to‑end flow integrity (frontend call → backend route → model → response → UI render).
+- Evidence of thoughtfulness in safety and privacy.
+
+Appendix — tech stack quick list
+- Frontend: Next.js (App Router), React, TypeScript, Tailwind/PostCSS, shadcn‑style components, axios with token interceptor.
+- Backend: Express, TypeScript, Mongoose (MongoDB), Joi, Multer, CORS/Morgan, JSON Web Tokens, Groq SDK.
+- Tooling: Bun (dev/build), ts‑node, Biome formatter.
+
+Closing
+NIRVANA.AI turns the small moments you do have into meaningful progress: a journal entry here, a 3‑minute exercise there, a helpful chat when you need it. It’s consistent, private, and designed to fit real life — not the other way around.

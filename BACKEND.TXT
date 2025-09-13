@@ -1,0 +1,288 @@
+# Backend folder overview (super simple guide)
+
+This folder is the server part of the app. Think of it as the kitchen where all cooking happens for your website/app. Below is a simple map of what each top-level file/folder does.
+
+If you want the detailed tour of the code inside `src/`, open: backend/backend-src.txt
+
+## What’s here
+- src/ — the actual server code (routes, controllers, models, etc.).
+- package.json — scripts and dependencies (how to run/build, what libraries we use).
+- bun.lock — Bun’s lockfile (like a recipe card so installs are the same for everyone).
+- tsconfig.json — TypeScript settings (how TypeScript should understand and compile the code).
+- biome.json — Formatter/linter settings (keeps code neat and consistent).
+- .env.example — example of environment variables (secret keys & settings go in a real .env file).
+- README.md — a tiny note about the backend being under development.
+- .gitignore — tells git which files/folders NOT to track.
+
+---
+
+## src/ (code lives here)
+- This is where all the action is: routes, controllers, database models, middleware, etc.
+- For a friendly, detailed walk-through made for beginners, open: /backend-src.txt
+
+                       ### Backend-src.txt ###
+
+
+# Backend src overview (super simple guide)
+
+Think of the backend like a small city:
+- Routes are doors and roads people use to get places (URLs).
+- Controllers are workers who do the job when someone arrives (business logic).
+- Models are blueprints for how things look in the database (data shapes).
+- Middleware is the security guard and tools you pass through (auth, uploads, errors).
+- Config and constants are the rulebook and sticky notes (settings and reusable values).
+
+Below is what each folder does, in the simplest words possible.
+
+## (top-level) — app.ts
+- What: The main switchboard. Starts the app and connects the pieces.
+- Why: So the server knows which roads (routes) exist and which tools (middleware) to use.
+- How (in order):
+  1) Read settings from `config/env.ts`.
+  2) Create the Express app.
+  3) Turn on helpers like JSON parsing, CORS, file upload.
+  4) Plug in all versioned routes (like `/api/v1`).
+  5) Add a final error handler so crashes become clean error messages.
+
+## api
+- What: The “front door” of your app. Everything the outside world can call.
+- Why: To organize endpoints by version (`v1`, later maybe `v2`).
+- How: Inside `v1/` you’ll find routes (doors), controllers (workers), and models (blueprints).
+
+## api/v1
+- What: Version 1 of your API.
+- Why: Keeps breaking changes out of older versions.
+- What’s inside:
+  - `controller/` — the workers who do the actual tasks.
+  - `models/` — descriptions of how data is saved in MongoDB.
+  - `routes/` — the list of URLs and which worker handles each one.
+
+### api/v1/controller
+- What: The brains of each feature. Gets a request, checks it, talks to the database/LLMs, and returns a reply.
+- Why: To keep logic in one place, separate from routing and data shape.
+- How (typical):
+  1) Validate the request (see `validation/*`).
+  2) If needed, check login/permissions (see `middleware/authorization.ts`).
+  3) Read/write data using `models/*`.
+  4) If it’s chat-related, maybe call the LLM using `lib/groq.ts` and `constants/prompt.ts`.
+  5) Send a JSON response; errors are handled centrally.
+- Files (simple idea of what they do):
+  - `chat.controller.ts` — send/get chat messages for a user/thread.
+  - `chatbot.controller.ts` — ask the chatbot to answer something.
+  - `journal.controller.ts` — create, read, update, delete journal entries.
+  - `micro-exercise.controller.ts` — list or generate short wellness exercises.
+  - `transcribe.controller.ts` — take audio file in, give text out.
+  - `user.controller.ts` — sign up, sign in, get/update profile.
+  - `wellness.controller.ts` — return a “wellness card” snapshot.
+  - `index.ts` — just re-exports to make imports tidy.
+
+### api/v1/models
+- What: Mongoose models — the shapes of your data in MongoDB.
+- Why: So the app knows exactly what a “User”, “Chat”, “Journal”, etc. looks like.
+- Typical fields (examples):
+  - `user.model.ts` — email, passwordHash, name, roles.
+  - `chat.model.ts` — userId, threadId, role (user/assistant), text.
+  - `chatbot.model.ts` — userId, settings, lastThreadId.
+  - `journal.model.ts` — userId, content, title, tags, mood.
+  - `micro-exercise.model.ts` — slug, title, description, category, difficulty.
+  - `report.model.ts` — userId, kind, payload.
+  - `welness-card.model.ts` — wellness snapshot (note the spelling: “welness”).
+
+### api/v1/routes
+- What: The list of URLs and which controller to run.
+- Why: So “GET /api/v1/journal” calls the journal worker, and so on.
+- How: Each feature has its own router file. All are mounted under `/api/v1` in `routes/index.ts`.
+- Typical paths (examples):
+  - `chat/router.ts` — `/api/v1/chat/*`
+  - `chatbot/router.ts` — `/api/v1/chatbot/*`
+  - `journal/router.ts` — `/api/v1/journal/*`
+  - `micro-exercise/router.ts` — `/api/v1/micro-exercise/*`
+  - `transcribe/router.ts` — `/api/v1/transcribe`
+  - `user/router.ts` — `/api/v1/user/*`
+  - `wellness-card/route.ts` — `/api/v1/wellness-card`
+
+## config
+- What: App settings from environment variables.
+- Why: Secrets and settings should not be hard-coded.
+- File:
+  - `env.ts` — reads things like database URL, API keys, and server port.
+- Common examples:
+  - `MONGODB_URI` — how to connect to MongoDB.
+  - `JWT_SECRET` — used to sign login tokens.
+  - `GROQ_API_KEY` — used to call the Groq LLM.
+  - `PORT`, `NODE_ENV`, `MAX_UPLOAD_SIZE` — server basics.
+
+## constants
+- What: Reusable values and templates.
+- Why: Keep magic strings in one place.
+- Files:
+  - `llms.ts` — model names and default LLM settings.
+  - `micro-exercises-schema.ts` — what a micro-exercise should look like.
+  - `prompt.ts` — prompt templates for the chatbot/LLM.
+  - `wellness-card.ts` — info used to compute the wellness card values.
+
+## helper
+- What: Small helpers used everywhere.
+- Why: Don’t repeat yourself.
+- Files:
+  - `errorResponse.ts` — builds a clean error JSON like `{ success:false, message:"..." }`.
+  - `schema-validation.ts` — runs validation schemas and turns their errors into nice 400 responses.
+
+## lib
+- What: Connections to outside services/libraries.
+- Files:
+  - `groq.ts` — talks to the Groq LLM using your API key.
+  - `mongoose.ts` — connects to MongoDB and manages the connection.
+
+## middleware
+- What: Tools that run before/after controllers.
+- Why: Add common features (auth, uploads, error handling) in one place.
+- Files:
+  - `authorization.ts` — checks your token; if valid, adds `req.user` so we know who you are.
+  - `error.ts` — catches errors and replies with a friendly JSON instead of crashing.
+  - `multer.ts` — helps handle file uploads (like audio for transcription).
+
+## types
+- What: TypeScript type additions.
+- Why: So the code knows, for example, that `req.user` exists.
+- File:
+  - `index.d.ts` — adds custom types to Express or other modules.
+
+## validation
+- What: Rules that say “a proper request must look like this”.
+- Why: To catch bad inputs early.
+- Files (examples of what they check):
+  - `chat-validation.ts` — needs a `message` string, maybe a `threadId`.
+  - `chatbot-validation.ts` — needs a `prompt` string.
+  - `journal-validation.ts` — needs `content`, maybe `title` and `tags`.
+  - `micro-exercise-validation.ts` — filters like `category`, `difficulty`.
+  - `user-validation.ts` — `email` must be valid, `password` must be long enough.
+
+---
+
+## One request’s journey (baby steps)
+1) You call a URL, like `POST /api/v1/journal`.
+2) Route says “this goes to `journal.controller`”.
+3) Validation checks the body (is `content` there?).
+4) Authorization (if needed) checks your token and sets `req.user`.
+5) Controller saves/reads data using a model (MongoDB).
+6) If chat-related, it may also ask the LLM via `lib/groq.ts`.
+7) Controller sends back JSON. If anything breaks, `middleware/error.ts` turns it into a clean error reply.
+
+## Tiny examples (just to picture it)
+- Transcribe audio:
+  - Send a file field named `audio` to `POST /api/v1/transcribe`.
+  - Get back `{ text: "hello world" }`.
+- Send a chat message:
+  - POST `/api/v1/chat/messages` with `{ message: "Hi!" }`.
+  - Get back the saved message and maybe the assistant’s reply.
+
+## Add a new feature in 5 steps
+1) Create a model in `api/v1/models` (define how data looks).
+2) Create a controller in `api/v1/controller` (what to do for each request).
+3) Create a router in `api/v1/routes/<feature>/router.ts` (the URLs).
+4) Mount your router in `api/v1/routes/index.ts` (so the app sees your URLs).
+5) Add validation in `validation/*` and use it in the controller.
+
+## Common gotchas (easy fixes)
+- Missing env var? Make sure `config/env.ts` loads things like `MONGODB_URI`, `JWT_SECRET` first.
+- Bad request shape? Add/update a validation schema.
+- Slow queries? Add indexes on fields you search often (like `userId`).
+- Repeated strings? Put them in `constants/*`.
+
+---
+
+## package.json (scripts + dependencies)
+- What it does: defines how to run, build, and format the backend; lists the libraries used.
+- Scripts (what each one means in plain words):
+  - "dev": "bun --hot run src/app.ts"
+    - Start the server in development with Bun and hot reload (server restarts when files change).
+  - "start": "ts-node -r tsconfig-paths/register src/app.ts"
+    - Start the server using ts-node (Node.js runs TypeScript directly). Useful if you prefer Node over Bun.
+  - "build": "bun build src/app.ts --outdir dist"
+    - Build/compile the app into the `dist/` folder (Bun’s builder).
+  - "format": "biome format --write ."
+    - Auto-format code using Biome.
+  - "lint": "biome format ."
+    - Checks formatting (quick way to ensure style is consistent).
+- Notable dependencies:
+  - express — the web server framework.
+  - mongoose — talks to MongoDB.
+  - joi — request validation (checking incoming data is shaped correctly).
+  - multer — handles file uploads (e.g., audio for transcription).
+  - jsonwebtoken — for login tokens (JWTs).
+  - cors, morgan — CORS headers and request logging.
+  - groq-sdk — to call the Groq LLM.
+  - dotenv — loads environment variables from .env.
+- Dev deps:
+  - ts-node, @types/* — TypeScript tooling.
+  - @biomejs/biome — formatter/linter.
+
+Tip: You can use Bun for dev (fast) and still keep Node/ts-node available via the "start" script.
+
+---
+
+## bun.lock
+- A lockfile created by Bun (like npm’s package-lock.json).
+- Makes sure everyone installs the exact same versions of libs.
+
+---
+
+## tsconfig.json (TypeScript)
+- Key ideas:
+  - target/module: ESNext — modern JavaScript output.
+  - moduleResolution: bundler — compatible with Bun/modern bundlers.
+  - rootDir: src; outDir: dist — source in `src/`, compiled files go to `dist/` when you build.
+  - baseUrl + paths: allows imports like `@config/env` pointing to `src/config/env.ts`.
+  - strict: true — TypeScript is strict, catches more mistakes early.
+  - esModuleInterop/skipLibCheck: smoother interop and faster type checks.
+
+---
+
+## biome.json (formatter/linter)
+- Keeps code formatting consistent for the whole team.
+- Settings like indent width, line width, quote style, etc.
+- You can auto-fix formatting via the "format" script.
+
+---
+
+## .env.example (environment variables)
+- Shows example keys that your real `.env` might need.
+- These sample keys (here) are related to authentication/host URL. In practice, the backend will also typically need:
+  - MONGODB_URI — database connection string.
+  - JWT_SECRET — used to sign login tokens.
+  - GROQ_API_KEY — key for the Groq LLM.
+- Create your own `.env` (not committed to git) and fill in the real values.
+
+---
+
+## README.md
+- Small note that the backend is under development (version 0.0.0).
+- For the real documentation, use this file (backend-overview.txt) and the src guide (backend-src.txt).
+
+---
+
+## .gitignore
+- Tells git to skip files like logs, local env files, or build artifacts.
+
+---
+
+## How it all works together (bird’s-eye view)
+- You run the server (dev with Bun hot reload, or start via ts-node).
+- The server code inside `src/` (see backend/backend-src.txt) defines routes and logic.
+- TypeScript settings from `tsconfig.json` help compile/understand the code.
+- Environment variables from `.env` configure secrets and URLs.
+- Biome keeps the code clean and tidy.
+- MongoDB stores your data (via Mongoose models).
+- Optional: the Groq LLM helps generate smart chat replies when needed.
+
+---
+
+## New to this? Quick mental model
+- package.json = the command menu and library list.
+- tsconfig.json = how TypeScript should behave.
+- biome.json = how to keep code pretty.
+- .env = your secret settings (never commit this file!).
+- src/ = where the real logic lives (go read backend/backend-src.txt for that story).
+
+End of guide.
