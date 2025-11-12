@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-# 🧘‍♀️ Nirvana – Your AI-Powered Mental Wellness Companion
-<!-- PROJECT LOGO -->
-=======
+
 # 🧘‍♀️ Nirvana – Your AI-Powered Mental Wellness Companion.
->>>>>>> ec29b3a (initialcommit)
 <br />
 <div align="center">
   <img src=".github/assets/logo.png" alt="Logo" width="90" height="90">
