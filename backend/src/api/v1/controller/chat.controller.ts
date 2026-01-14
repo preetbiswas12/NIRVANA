@@ -2,7 +2,7 @@ import type { NextFunction, Response } from "express";
 import { TEXT_GENERATION_MODEL } from "../../../constants/llms";
 import { CHAT_SYSTEM_PROMPT } from "../../../constants/prompt";
 import ErrorResponse from "../../../helper/errorResponse";
-import { groq } from "../../../lib/groq";
+import { genAI } from "../../../lib/gemini";
 import type { CustomRequest } from "../../../types";
 import { Chat } from "../models/chat.model";
 import { Chatbot } from "../models/chatbot.model";
@@ -18,27 +18,19 @@ export const chat = async (req: CustomRequest, res: Response, next: NextFunction
     if (!chatbot) return next(new ErrorResponse("Chatbot not found !", 404));
 
     const systemPrompt = `${CHAT_SYSTEM_PROMPT} and you are specialized in ${chatbot?.name} and keep this in mind ${chatbot?.system_prompt}`;
-    const stream = await groq.chat.completions.create({
-      model: TEXT_GENERATION_MODEL,
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      stream: true,
-    });
+    
+    const model = genAI.getGenerativeModel({ model: TEXT_GENERATION_MODEL });
+    const result = await model.generateContentStream([
+      { role: "user", parts: [{ text: systemPrompt }] },
+      { role: "user", parts: [{ text: prompt }] }
+    ]);
 
     let aiResponse = "";
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Transfer-Encoding", "chunked");
 
-    for await (const chunk of stream) {
-      const content = chunk.choices?.[0]?.delta?.content;
+    for await (const chunk of result.stream) {
+      const content = chunk.text();
       if (content) {
         aiResponse += content;
         res.write(content);

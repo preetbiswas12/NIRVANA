@@ -13,7 +13,7 @@ import {
   MICRO_EXERCISE_SYSTEM_PROMPT,
 } from "../../../constants/prompt";
 import ErrorResponse from "../../../helper/errorResponse";
-import { groq } from "../../../lib/groq";
+import { genAI } from "../../../lib/gemini";
 import type { CustomRequest } from "../../../types";
 import { Chat } from "../models/chat.model";
 import { MicroExercise } from "../models/micro-exercise.model";
@@ -30,24 +30,20 @@ export const generateMicroExercise = async (
 
     const systemPrompt = MICRO_EXERCISE_SYSTEM_PROMPT + MICRO_EXERCISE_GENERATION_SCHEMA;
 
-    const chat_completion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-        {
-          role: "user",
-          content: `Create a CBT micro-exercise on: ${sessionGoal}, primary emotion: ${primaryEmotion}, metal health rate: ${mentalHealthRate}`,
-        },
-      ],
+    const model = genAI.getGenerativeModel({
       model: OBJECT_GENERATION_MODEL,
-      temperature: 0.4,
-      stream: false,
-      response_format: { type: "json_object" },
+      generationConfig: {
+        temperature: 0.4,
+        responseMimeType: "application/json",
+      },
     });
 
-    const exerciseContent = JSON.parse(chat_completion.choices?.[0]?.message?.content ?? "{}");
+    const result = await model.generateContent([
+      { role: "user", parts: [{ text: systemPrompt }] },
+      { role: "user", parts: [{ text: `Create a CBT micro-exercise on: ${sessionGoal}, primary emotion: ${primaryEmotion}, metal health rate: ${mentalHealthRate}` }] },
+    ]);
+
+    const exerciseContent = JSON.parse(result.response.text() ?? "{}");
     res.status(200).json({ success: true, data: exerciseContent });
   } catch (error) {
     console.error(error);
@@ -65,24 +61,20 @@ export const getFeedbackForEachStep = async (
 
     const systemPrompt = MICRO_EXERCISE_FEEDBACK_PROMPT + MICRO_EXERCISE_FEEDBACK_SCHEMA;
 
-    const chat_completion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-        {
-          role: "user",
-          content: `This is user context to a reflection or MCQ question: ${userContext}`,
-        },
-      ],
+    const model = genAI.getGenerativeModel({
       model: OBJECT_GENERATION_MODEL,
-      temperature: 0.4,
-      stream: false,
-      response_format: { type: "json_object" },
+      generationConfig: {
+        temperature: 0.4,
+        responseMimeType: "application/json",
+      },
     });
 
-    const feedback = JSON.parse(chat_completion.choices?.[0]?.message?.content ?? "{}");
+    const result = await model.generateContent([
+      { role: "user", parts: [{ text: systemPrompt }] },
+      { role: "user", parts: [{ text: `This is user context to a reflection or MCQ question: ${userContext}` }] },
+    ]);
+
+    const feedback = JSON.parse(result.response.text() ?? "{}");
     res.status(200).json({ success: true, data: feedback });
 
   } catch (error) {
@@ -110,26 +102,25 @@ export const saveMicroExerciseWithReport = async (
 
     const systemPrompt = MICRO_EXERCISE_REPORT_PROMPT + MICRO_EXERCISE_REPORT_SCHEMA;
 
-    const chat_completion = await groq.chat.completions.create({
+    const model = genAI.getGenerativeModel({
       model: OBJECT_GENERATION_MODEL,
-      temperature: 0.4,
-      stream: false,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content: getUserPromptForReportGeneration({
-            user,
-            filledMicroExercise,
-            pastConversations: messages,
-            pastReports: reports,
-          }),
-        },
-      ],
+      generationConfig: {
+        temperature: 0.4,
+        responseMimeType: "application/json",
+      },
     });
 
-    const aiGeneratedReport = JSON.parse(chat_completion.choices[0]?.message.content ?? "{}");
+    const result = await model.generateContent([
+      { role: "user", parts: [{ text: systemPrompt }] },
+      { role: "user", parts: [{ text: getUserPromptForReportGeneration({
+        user,
+        filledMicroExercise,
+        pastConversations: messages,
+        pastReports: reports,
+      }) }] },
+    ]);
+
+    const aiGeneratedReport = JSON.parse(result.response.text() ?? "{}");
     const report = await Report.create({ userClerkId: userId, ...aiGeneratedReport });
     if (!report) return next(new ErrorResponse("Error occured while generating report.", 500));
 

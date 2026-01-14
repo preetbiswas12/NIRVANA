@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import ErrorResponse from '../../../helper/errorResponse';
-import { groq } from '../../../lib/groq';
-import { SPEECH_TO_TEXT_MODEL } from '../../../constants/llms';
+import { genAI } from '../../../lib/gemini';
+import { TEXT_GENERATION_MODEL } from '../../../constants/llms';
 import fs from 'fs';
 
 export const transcribe = async (req: Request, res: Response, next: NextFunction) => {
@@ -11,21 +11,27 @@ export const transcribe = async (req: Request, res: Response, next: NextFunction
       }
 
       const filePath = req.file.path;
+      const audioData = fs.readFileSync(filePath);
+      const base64Audio = audioData.toString('base64');
 
-      const transcription = await groq.audio.transcriptions.create({
-         file: fs.createReadStream(filePath),
-         model: SPEECH_TO_TEXT_MODEL,
-         prompt: 'Specify context or spelling',
-         language: 'en',
-         temperature: 0.0,
-      });
+      const model = genAI.getGenerativeModel({ model: TEXT_GENERATION_MODEL });
+      
+      const result = await model.generateContent([
+         {
+            inlineData: {
+               data: base64Audio,
+               mimeType: req.file.mimetype,
+            },
+         },
+         { text: 'Transcribe this audio file. Provide only the transcription text without any additional commentary.' },
+      ]);
 
       fs.unlinkSync(filePath);
 
       res.status(200).json({
          success: true,
          message: 'Transcribed successfully',
-         data: transcription.text,
+         data: result.response.text(),
       });
    } catch (error) {
       console.error(error);
